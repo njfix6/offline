@@ -330,3 +330,34 @@ final class EncryptionAtRestTests: TemporaryDirectoryTestCase {
         XCTAssertThrowsError(try makeStore(key: key))
     }
 }
+
+final class DateSectionTests: TemporaryDirectoryTestCase {
+    func testSectionTitles() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = Date(timeIntervalSince1970: 1_795_600_000) // 2026-11-25 UTC
+        func title(daysAgo: Double) -> String {
+            DateSection.title(for: now.addingTimeInterval(-daysAgo * 86_400), now: now, calendar: calendar)
+        }
+        XCTAssertEqual(title(daysAgo: 0), "Today")
+        XCTAssertEqual(title(daysAgo: -1), "Today")
+        XCTAssertEqual(title(daysAgo: 1), "Yesterday")
+        XCTAssertEqual(title(daysAgo: 5), "Previous 7 Days")
+        XCTAssertEqual(title(daysAgo: 20), "Previous 30 Days")
+        XCTAssertEqual(title(daysAgo: 400), "2025")
+
+        let groups = DateSection.group([1, 2, 11, 12, 3]) { $0 > 10 ? "big" : "small" }
+        XCTAssertEqual(groups.map(\.title), ["small", "big", "small"])
+        XCTAssertEqual(groups.map(\.items), [[1, 2], [11, 12], [3]])
+    }
+
+    func testFolderCounts() throws {
+        let store = try makeStore()
+        let folder = try store.createFolder(name: "F")
+        try store.createNote(folderID: folder.id)
+        let trashed = try store.createNote(folderID: folder.id)
+        try store.trashNote(id: trashed.id)
+        try store.createNote()
+        XCTAssertEqual(try store.noteCountsByFolder(), [folder.id: 1])
+    }
+}

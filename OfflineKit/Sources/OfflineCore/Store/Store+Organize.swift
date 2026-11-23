@@ -263,3 +263,24 @@ public enum TagName {
         normalized(field.split(separator: ",").map(String.init))
     }
 }
+
+extension Store {
+    /// How many (non-trashed) notes sit directly in each folder.
+    public func noteCountsByFolder() throws -> [UUID: Int] {
+        try pool.read { db in
+            var counts: [UUID: Int] = [:]
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT folder_id, count(*) AS note_count FROM note
+                    WHERE deleted_at IS NULL AND folder_id IS NOT NULL
+                    GROUP BY folder_id
+                    """
+            )
+            for row in rows {
+                counts[try uuid(row, "folder_id")] = row["note_count"]
+            }
+            return counts
+        }
+    }
+}

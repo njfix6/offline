@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  privacy-checks:
+    name: Privacy checks (source)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: Scripts/check-privacy.sh
+
+  build-and-test:
+    name: Build and test (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          newest="$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)"
+          sudo xcode-select -s "$newest"
+          xcodebuild -version
+          swift --version
+
+      - name: Unit tests (Vault, Store, search, backup, Markdown) against SQLCipher
+        run: |
+          swift test --package-path OfflineKit > test.log 2>&1 || {
+            grep -E "error:|failed|XCTAssert" -A6 test.log | head -400
+            tail -n 40 test.log
+            exit 1
+          }
+          grep -E "Executed [0-9]+ tests|skipped" test.log | tail -n 20
+
+      - name: Build the app
+        run: |
+          xcodebuild build \
+            -project Offline.xcodeproj \
+            -scheme Offline \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= > build.log 2>&1 || {
+            grep -E "error:|error " -A8 build.log | head -400
+            tail -n 40 build.log
+            exit 1
+          }
+          tail -n 5 build.log
+          test -d build/Build/Products/Release/Offline.app
+
+      - name: Privacy checks (built app)
+        run: Scripts/check-privacy.sh build/Build/Products/Release/Offline.app
