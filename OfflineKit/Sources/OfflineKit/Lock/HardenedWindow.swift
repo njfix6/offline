@@ -27,6 +27,8 @@ final class HardenedWindow: NSWindow {
         super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
         sharingType = .none
         isRestorable = false
+        // Swift owns the window; AppKit must not release it a second time on close.
+        isReleasedWhenClosed = false
         // The title never contains anything from a note.
         title = "Offline"
         tabbingMode = .disallowed
