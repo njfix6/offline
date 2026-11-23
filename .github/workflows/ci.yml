@@ -35,8 +35,10 @@ jobs:
       - name: Unit and UI tests against SQLCipher
         run: |
           swift test --package-path OfflineKit > test.log 2>&1 || {
-            grep -E "error:|failed|XCTAssert" -A6 test.log | head -400
-            tail -n 40 test.log
+            grep -E "error:|failed|XCTAssert" -A6 test.log | grep -v "warning:" | head -200
+            tail -n 25 test.log
+            sleep 15
+            Scripts/print-crash.py
             exit 1
           }
           grep -E "Executed [0-9]+ tests|skipped" test.log | tail -n 20
