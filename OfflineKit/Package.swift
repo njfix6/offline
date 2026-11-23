@@ -41,6 +41,11 @@ let package = Package(
             name: "OfflineCoreTests",
             dependencies: ["OfflineCore"]
         ),
+        .testTarget(
+            name: "OfflineKitTests",
+            dependencies: ["OfflineKit", "OfflineCore"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

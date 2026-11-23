@@ -32,7 +32,7 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Unit tests (Vault, Store, search, backup, Markdown) against SQLCipher
+      - name: Unit and UI tests against SQLCipher
         run: |
           swift test --package-path OfflineKit > test.log 2>&1 || {
             grep -E "error:|failed|XCTAssert" -A6 test.log | head -400
@@ -61,3 +61,20 @@ jobs:
 
       - name: Privacy checks (built app)
         run: Scripts/check-privacy.sh build/Build/Products/Release/Offline.app
+
+      - name: Launch smoke test
+        run: |
+          # The CI build is ad-hoc signed, so the Keychain is unavailable and the
+          # app stays on its locked screen. This only proves it starts and keeps
+          # running without crashing.
+          build/Build/Products/Release/Offline.app/Contents/MacOS/Offline &
+          pid=$!
+          sleep 10
+          if kill -0 "$pid" 2>/dev/null; then
+            echo "Offline is still running after 10 seconds."
+            kill "$pid"
+          else
+            echo "Offline exited or crashed on launch."
+            ls ~/Library/Logs/DiagnosticReports 2>/dev/null | tail -n 5
+            exit 1
+          fi
